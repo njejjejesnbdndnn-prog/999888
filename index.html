@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>JOGO</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0b0f19 !important;
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+
+        /* Custom Scrollbar Removal */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Neon & Glitch Effects */
+        .neon-text-blue { text-shadow: 0 0 8px #00f0ff, 0 0 20px #00f0ff; }
+        .glitch {
+            position: relative;
+            animation: glitch-skew 1s infinite linear alternate-reverse;
+        }
+        .glitch::before, .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+        }
+        .glitch::before {
+            left: 2px;
+            text-shadow: -2px 0 #ff007f;
+            clip: rect(24px, 550px, 90px, 0);
+            animation: glitch-anim 3s infinite linear alternate-reverse;
+        }
+        .glitch::after {
+            left: -2px;
+            text-shadow: -2px 0 #00f0ff;
+            clip: rect(85px, 550px, 140px, 0);
+            animation: glitch-anim2 2.5s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim {
+            0% { clip: rect(12px, 9999px, 52px, 0); }
+            20% { clip: rect(78px, 9999px, 12px, 0); }
+            40% { clip: rect(34px, 9999px, 89px, 0); }
+            60% { clip: rect(90px, 9999px, 5px, 0); }
+            80% { clip: rect(10px, 9999px, 60px, 0); }
+            100% { clip: rect(67px, 9999px, 30px, 0); }
+        }
+        @keyframes glitch-anim2 {
+            0% { clip: rect(80px, 9999px, 10px, 0); }
+            20% { clip: rect(10px, 9999px, 70px, 0); }
+            40% { clip: rect(50px, 9999px, 20px, 0); }
+            60% { clip: rect(30px, 9999px, 90px, 0); }
+            80% { clip: rect(65px, 9999px, 40px, 0); }
+            100% { clip: rect(15px, 9999px, 85px, 0); }
+        }
+
+        /* Vault Theme - Neutral Clean */
+        .vault-bg {
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 50%, #94a3b8 100%);
+            color: #1e293b;
+        }
+        .vault-card {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 10px 25px -5px rgba(51, 65, 85, 0.15);
+        }
+        .vault-btn {
+            background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.15s ease;
+        }
+        .vault-btn:active {
+            transform: scale(0.95);
+            background: #cbd5e1;
+        }
+
+        /* Game Controls Buttons */
+        .ctrl-btn {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .ctrl-btn:active {
+            transform: scale(0.92);
+            border-color: #00f0ff;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white flex flex-col justify-between h-screen w-screen overflow-hidden">
+
+    <!-- ==================== TELA 1: INTERFACE DO JOGO ==================== -->
+    <div id="screen-game" class="flex-1 flex flex-col justify-between p-3 h-full w-full max-w-md mx-auto">
+        <!-- Top Header Bar -->
+        <header class="flex justify-between items-center bg-slate-900/90 border border-slate-800 rounded-2xl px-4 py-2.5 shadow-lg backdrop-blur-md">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-400 font-bold text-xs">
+                    <i class="fa-solid fa-cube"></i>
+                </div>
+                <div>
+                    <h1 class="font-orbitron font-extrabold text-sm tracking-wider text-cyan-400 leading-none">JOGO</h1>
+                    <span class="text-[10px] text-slate-400 font-medium">PONTOS: <span id="score-display" class="text-amber-400 font-bold font-orbitron">0</span></span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="openRulesModal()" class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center text-xs active:scale-95 transition">
+                    <i class="fa-solid fa-circle-question"></i>
+                </button>
+                <button onclick="toggleSound()" class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center text-xs active:scale-95 transition">
+                    <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+                </button>
+                <!-- Botão SAIR inteligente (1 toque -> modal, 12 toques -> 404) -->
+                <button id="btn-exit" class="px-4 py-2 rounded-xl bg-rose-600 border border-rose-500 text-white font-orbitron font-bold text-xs shadow-lg shadow-rose-600/30 active:scale-95 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-right-from-bracket"></i> SAIR
+                </button>
+            </div>
+        </header>
+
+        <!-- Canvas do Jogo em Tela Cheia Responsiva -->
+        <main class="flex-1 my-2 flex items-center justify-center relative min-h-0">
+            <canvas id="game-canvas" class="border border-cyan-500/30 rounded-2xl bg-slate-950 shadow-2xl shadow-cyan-950/50 max-h-full max-w-full"></canvas>
+
+            <!-- Game Over Overlay -->
+            <div id="game-over-overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md rounded-2xl hidden flex-col items-center justify-center p-6 text-center z-20">
+                <h2 class="font-orbitron text-2xl font-black text-rose-500 mb-1">FIM DE JOGO</h2>
+                <p class="text-xs text-slate-400 mb-4">Pontuação Total: <span id="final-score" class="text-amber-400 font-bold font-orbitron">0</span></p>
+                <button onclick="resetGame()" class="px-6 py-3 bg-cyan-500 text-slate-950 rounded-xl font-orbitron font-bold text-xs shadow-lg shadow-cyan-500/30 active:scale-95 transition">
+                    JOGAR NOVAMENTE
+                </button>
+            </div>
+        </main>
+
+        <!-- Controles Inferiores Flutuantes -->
+        <footer class="grid grid-cols-4 gap-2 mb-1">
+            <button onclick="moveLeft()" class="ctrl-btn h-14 rounded-2xl flex items-center justify-center text-cyan-400 text-xl font-bold active:bg-cyan-950/50">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <button onclick="rotatePiece()" class="ctrl-btn h-14 rounded-2xl flex items-center justify-center text-fuchsia-400 text-xl font-bold active:bg-fuchsia-950/50">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+            <button onclick="moveRight()" class="ctrl-btn h-14 rounded-2xl flex items-center justify-center text-cyan-400 text-xl font-bold active:bg-cyan-950/50">
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <button onclick="dropPieceFast()" class="ctrl-btn h-14 rounded-2xl flex items-center justify-center text-amber-400 text-xl font-bold active:bg-amber-950/50">
+                <i class="fa-solid fa-angles-down"></i>
+            </button>
+        </footer>
+    </div>
+
+    <!-- Modal Regras / Guia -->
+    <div id="modal-rules" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-xs text-slate-200 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
+                <h3 class="font-orbitron font-bold text-sm text-cyan-400 flex items-center gap-2">
+                    <i class="fa-solid fa-gamepad"></i> REGRAS DO JOGO
+                </h3>
+                <button onclick="closeRulesModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+            </div>
+            <div class="space-y-3 text-xs leading-relaxed text-slate-300">
+                <p><b>• Objetivo:</b> Encaixe os blocos e complete linhas inteiras para fazê-las desaparecer.</p>
+                <p><b>• Pontos:</b> Cada linha concluída concede pontos no placar.</p>
+                <p><b>• Controles:</b> Use os botões inferiores para mover, girar e acelerar a descida da peça.</p>
+            </div>
+            <button onclick="closeRulesModal()" class="w-full mt-5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-semibold text-xs active:scale-95 transition">
+                Entendido
+            </button>
+        </div>
+    </div>
