@@ -352,3 +352,256 @@
         </div>
     </div>
     
+    <!-- Lógica JavaScript -->
+    <script>
+        /* ----------------------------------------------------
+           1. ÁUDIO SINTETIZADO EXCLUSIVO DO JOGO
+        ---------------------------------------------------- */
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            // Os sons apenas tocam se a opção estiver ativada e a tela visível for a do jogo
+            const gameScreen = document.getElementById('screen-game');
+            if (!soundEnabled || gameScreen.classList.contains('hidden')) return;
+
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'move') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(260, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                    osc.start(now); osc.stop(now + 0.04);
+                } else if (type === 'rotate') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
+                    gain.gain.setValueAtTime(0.06, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now); osc.stop(now + 0.05);
+                } else if (type === 'drop') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.exponentialRampToValueAtTime(60, now + 0.08);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    osc.start(now); osc.stop(now + 0.08);
+                } else if (type === 'clear') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.06);
+                    osc.frequency.setValueAtTime(783.99, now + 0.12);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                    osc.start(now); osc.stop(now + 0.2);
+                } else if (type === 'gameover') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(80, now + 0.35);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.start(now); osc.stop(now + 0.35);
+                }
+            } catch (e) {}
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-icon').className = soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+        }
+
+        function openRulesModal() {
+            document.getElementById('modal-rules').classList.remove('hidden');
+            document.getElementById('modal-rules').classList.add('flex');
+        }
+
+        function closeRulesModal() {
+            document.getElementById('modal-rules').classList.add('hidden');
+            document.getElementById('modal-rules').classList.remove('flex');
+        }
+
+        /* ----------------------------------------------------
+           2. JOGO DE BLOCOS FULLSCREEN
+        ---------------------------------------------------- */
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const COLS = 10;
+        const ROWS = 20;
+        let BLOCK_SIZE = 24;
+
+        let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        let score = 0;
+        let gameOver = false;
+        let dropCounter = 0;
+        let dropInterval = 750;
+        let lastTime = 0;
+
+        const PALETTE = [
+            null, '#00f0ff', '#ff007f', '#ffb703', '#06d6a0', '#7000ff', '#3a86ff', '#ff0055'
+        ];
+
+        const SHAPES = [
+            [],
+            [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+            [[0,2,0],[2,2,2],[0,0,0]],
+            [[3,3],[3,3]],
+            [[0,4,4],[4,4,0],[0,0,0]],
+            [[5,5,0],[0,5,5],[0,0,0]],
+            [[6,0,0],[6,6,6],[0,0,0]],
+            [[0,0,7],[7,7,7],[0,0,0]]
+        ];
+
+        let player = { pos: { x: 0, y: 0 }, matrix: null, colorIndex: 0 };
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            if (!container) return;
+            const availableHeight = container.clientHeight || 400;
+            const availableWidth = container.clientWidth || 300;
+            BLOCK_SIZE = Math.floor(Math.min(availableHeight / ROWS, availableWidth / COLS));
+            canvas.width = COLS * BLOCK_SIZE;
+            canvas.height = ROWS * BLOCK_SIZE;
+        }
+
+        function createPiece() {
+            const type = Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
+            player.matrix = SHAPES[type];
+            player.colorIndex = type;
+            player.pos.y = 0;
+            player.pos.x = Math.floor(COLS / 2) - Math.floor(player.matrix[0].length / 2);
+
+            if (collide(grid, player)) {
+                gameOver = true;
+                playSound('gameover');
+                document.getElementById('final-score').innerText = score;
+                document.getElementById('game-over-overlay').classList.remove('hidden');
+                document.getElementById('game-over-overlay').classList.add('flex');
+            }
+        }
+
+        function collide(grid, player) {
+            const [m, o] = [player.matrix, player.pos];
+            for (let y = 0; y < m.length; ++y) {
+                for (let x = 0; x < m[y].length; ++x) {
+                    if (m[y][x] !== 0 && (grid[y + o.y] && grid[y + o.y][x + o.x]) !== 0) return true;
+                }
+            }
+            return false;
+        }
+
+        function merge(grid, player) {
+            player.matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) grid[y + player.pos.y][x + player.pos.x] = player.colorIndex;
+                });
+            });
+        }
+
+        function sweepGrid() {
+            let rowCount = 0;
+            outer: for (let y = grid.length - 1; y >= 0; --y) {
+                for (let x = 0; x < grid[y].length; ++x) {
+                    if (grid[y][x] === 0) continue outer;
+                }
+                const row = grid.splice(y, 1)[0].fill(0);
+                grid.unshift(row);
+                ++y;
+                rowCount++;
+            }
+            if (rowCount > 0) {
+                score += rowCount * 100 * rowCount;
+                document.getElementById('score-display').innerText = score;
+                playSound('clear');
+            }
+        }
+
+        function drawMatrix(matrix, offset) {
+            matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        const px = (x + offset.x) * BLOCK_SIZE;
+                        const py = (y + offset.y) * BLOCK_SIZE;
+                        ctx.fillStyle = PALETTE[value];
+                        ctx.shadowColor = PALETTE[value];
+                        ctx.shadowBlur = 6;
+                        ctx.fillRect(px + 1, py + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                        ctx.fillRect(px + 2, py + 2, BLOCK_SIZE - 4, BLOCK_SIZE / 4);
+                        ctx.shadowBlur = 0;
+                    }
+                });
+            });
+        }
+
+        function draw() {
+            ctx.fillStyle = '#070a12';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawMatrix(grid, { x: 0, y: 0 });
+            if (player.matrix) drawMatrix(player.matrix, player.pos);
+        }
+
+        function playerDrop() {
+            player.pos.y++;
+            if (collide(grid, player)) {
+                player.pos.y--;
+                merge(grid, player);
+                sweepGrid();
+                createPiece();
+            }
+            dropCounter = 0;
+        }
+
+        function moveLeft() {
+            if (gameOver) return;
+            player.pos.x--;
+            if (collide(grid, player)) player.pos.x++;
+            else playSound('move');
+        }
+
+        function moveRight() {
+            if (gameOver) return;
+            player.pos.x++;
+            if (collide(grid, player)) player.pos.x--;
+            else playSound('move');
+        }
+
+        function rotatePiece() {
+            if (gameOver) return;
+            const pos = player.pos.x;
+            let offset = 1;
+            const m = player.matrix;
+            for (let y = 0; y < m.length; ++y) {
+                for (let x = 0; x < y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
+            }
+            m.forEach(row => row.reverse());
+            while (collide(grid, player)) {
+                player.pos.x += offset;
+                offset = -(offset + (offset > 0 ? 1 : -1));
+                if (offset > player.matrix[0].length) {
+                    m.forEach(row => row.reverse());
+                    for (let y = 0; y < m.length; ++y) {
+                        for (let x = 0; x < y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
+                    }
+                    player.pos.x = pos;
+                    return;
+                }
+            }
+            playSound('rotate');
+        }
+        
